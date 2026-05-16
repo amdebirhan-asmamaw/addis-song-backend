@@ -5,6 +5,7 @@ import compression from "compression";
 
 import { corsOptions } from "./config/corsOptions";
 import { errorHandler } from "./middlewares/error.middleware";
+import { requestLogger } from "./middlewares/logger.middleware";
 import routes from "./index.routes";
 const app = express();
 
@@ -25,6 +26,9 @@ app.use(rateLimit({ windowMs: 15 * 60 * 1000, max: 300 }));
 app.use(express.json({ limit: "10mb" }));
 app.use(express.urlencoded({ extended: true }));
 app.use(compression());
+
+// Request logger
+app.use(requestLogger);
 
 // Health check
 app.get("/health", (_req, res) => {

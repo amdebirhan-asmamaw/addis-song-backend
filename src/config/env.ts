@@ -1,20 +1,42 @@
 import "dotenv/config";
+import Joi from "joi";
+
+const envSchema = Joi.object({
+  NODE_ENV: Joi.string()
+    .valid("development", "production", "test")
+    .default("development"),
+  PORT: Joi.number().default(5000),
+  MONGO_URI: Joi.string().required().messages({
+    "string.empty": "MONGO_URI is required",
+    "any.required": "MONGO_URI is required",
+  }),
+  CORS_ORIGINS: Joi.string().optional().allow(""),
+  CORS_ORIGIN: Joi.string().optional().allow(""),
+}).unknown(true);
+
+const { error, value: parsed } = envSchema.validate(process.env, {
+  abortEarly: false,
+  stripUnknown: false,
+});
+
+if (error) {
+  console.error("❌ Environment validation failed:");
+  error.details.forEach((d) => console.error(`   - ${d.message}`));
+  process.exit(1);
+}
 
 export const env = {
-  nodeEnv: process.env.NODE_ENV ?? "development",
-  isProd: process.env.NODE_ENV === "production",
-  port: Number(process.env.PORT ?? 5000),
+  nodeEnv: parsed.NODE_ENV as string,
+  isProd: parsed.NODE_ENV === "production",
+  port: parsed.PORT as number,
+  mongoUri: parsed.MONGO_URI as string,
 
-  // Database
-  mongoUri: process.env.MONGO_URI as string,
-
-  // CORS
   corsOrigins: (() => {
-    const origins = process.env.CORS_ORIGINS || process.env.CORS_ORIGIN;
+    const origins = parsed.CORS_ORIGINS || parsed.CORS_ORIGIN;
     if (!origins) return [];
     return origins
       .split(",")
-      .map((o) => o.trim().toLowerCase().replace(/\/$/, ""))
+      .map((o: string) => o.trim().toLowerCase().replace(/\/$/, ""))
       .filter(Boolean);
   })(),
 };
