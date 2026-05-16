@@ -1,7 +1,18 @@
 import type { Request, Response, NextFunction } from "express";
-import { songService } from "./song.service";
+import { songService, type SongFiles } from "./song.service";
 import { getOverallStats } from "./song.stats";
 import { apiResponse } from "../../utils/apiResponse";
+
+function extractFiles(req: Request): SongFiles {
+  const files = req.files as
+    | { image?: Express.Multer.File[]; audio?: Express.Multer.File[] }
+    | undefined;
+  if (!files) return {};
+  return {
+    image: files.image?.[0],
+    audio: files.audio?.[0],
+  };
+}
 
 export const songController = {
   async list(req: Request, res: Response, next: NextFunction) {
@@ -39,7 +50,7 @@ export const songController = {
 
   async create(req: Request, res: Response, next: NextFunction) {
     try {
-      const song = await songService.create(req.body);
+      const song = await songService.create(req.body, extractFiles(req));
       res
         .status(201)
         .json(
@@ -56,7 +67,11 @@ export const songController = {
     next: NextFunction,
   ) {
     try {
-      const song = await songService.update(req.params.id as string, req.body);
+      const song = await songService.update(
+        req.params.id as string,
+        req.body,
+        extractFiles(req),
+      );
       if (!song) {
         res
           .status(404)

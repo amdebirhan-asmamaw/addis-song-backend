@@ -12,6 +12,12 @@ const envSchema = Joi.object({
   }),
   CORS_ORIGINS: Joi.string().optional().allow(""),
   CORS_ORIGIN: Joi.string().optional().allow(""),
+
+  // Cloudinary
+  CLOUDINARY_CLOUD_NAME: Joi.string().required(),
+  CLOUDINARY_API_KEY: Joi.string().required(),
+  CLOUDINARY_API_SECRET: Joi.string().required(),
+  CLOUDINARY_URL: Joi.string().optional().allow(""),
 }).unknown(true);
 
 const { error, value: parsed } = envSchema.validate(process.env, {
@@ -39,4 +45,10 @@ export const env = {
       .map((o: string) => o.trim().toLowerCase().replace(/\/$/, ""))
       .filter(Boolean);
   })(),
+
+  cloudinary: {
+    cloudName: parsed.CLOUDINARY_CLOUD_NAME as string,
+    apiKey: parsed.CLOUDINARY_API_KEY as string,
+    apiSecret: parsed.CLOUDINARY_API_SECRET as string,
+  },
 };
