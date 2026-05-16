@@ -1,46 +1,33 @@
-# Addis Song Backend
+# Addis Song — Backend
 
-A RESTful API for managing song information — built with **Express.js**, **MongoDB**, **Mongoose**, and **TypeScript**. Supports full CRUD operations on songs and provides aggregated statistics (total counts, per-genre, per-artist, per-album breakdowns).
+A RESTful API for managing a song catalog, built with **Node.js**, **Express 5**, **TypeScript**, and **MongoDB**. Supports image & audio uploads via **Cloudinary** and provides aggregated statistics via MongoDB pipelines.
+
+**Deployed on:** [Render](https://render.com)
 
 ---
 
-## Table of Contents
+## Features
 
-- [Tech Stack](#tech-stack)
-- [Project Structure](#project-structure)
-- [Getting Started](#getting-started)
-  - [Prerequisites](#prerequisites)
-  - [Installation](#installation)
-  - [Environment Variables](#environment-variables)
-  - [Running Locally](#running-locally)
-- [Docker](#docker)
-- [API Reference](#api-reference)
-  - [Health Check](#health-check)
-  - [Songs](#songs)
-  - [Statistics](#statistics)
-- [API Response Format](#api-response-format)
-- [Data Model](#data-model)
-  - [Song](#song)
-  - [User](#user)
-- [Statistics Breakdown](#statistics-breakdown)
-- [Error Handling](#error-handling)
+- 🎵 **Song CRUD** — Create, read, update, and delete songs with full metadata
+- 🖼️ **Media Uploads** — Image and audio file uploads to Cloudinary via Multer
+- 📊 **Statistics API** — Aggregated stats: total songs/artists/albums/genres, per-genre/per-artist/per-album breakdowns
+- 🔒 **Validation** — Joi-based request validation middleware
+- 🛡️ **Security** — Helmet, CORS, rate limiting, compression
+- 🌱 **Database Seeder** — Seed script with Cloudinary asset management
 
 ---
 
 ## Tech Stack
 
-| Technology   | Purpose                          |
-| ------------ | -------------------------------- |
-| Node.js      | Runtime environment              |
-| Express 5    | HTTP framework                   |
-| MongoDB      | Database                         |
-| Mongoose     | ODM / schema modeling            |
-| TypeScript   | Type safety                      |
-| Joi          | Request validation               |
-| Docker       | Containerization                 |
-| Helmet       | Security headers                 |
-| CORS         | Cross-origin resource sharing    |
-| Compression  | Response compression             |
+| Layer           | Technology                    |
+| --------------- | ----------------------------- |
+| **Runtime**     | Node.js                       |
+| **Framework**   | Express 5                     |
+| **Language**    | TypeScript 6                  |
+| **Database**    | MongoDB (Mongoose 9)          |
+| **File Upload** | Multer + Cloudinary           |
+| **Validation**  | Joi                           |
+| **Deployment**  | Render                        |
 
 ---
 
@@ -49,28 +36,29 @@ A RESTful API for managing song information — built with **Express.js**, **Mon
 ```
 src/
 ├── config/
-│   ├── corsOptions.ts        # CORS middleware configuration
-│   ├── db.ts                 # MongoDB connection & disconnect
-│   └── env.ts                # Environment variable parsing
+│   ├── db.ts              # MongoDB connection & graceful close
+│   └── env.ts             # Joi-validated environment variables
+├── constants/             # App-wide constants
 ├── features/
-│   ├── auth/
-│   │   └── user.model.ts     # User Mongoose model (email, username, password)
-│   └── songs/
-│       ├── song.controller.ts  # HTTP request handlers
-│       ├── song.model.ts       # Song Mongoose model & indexes
-│       ├── song.routes.ts      # Express route definitions
-│       ├── song.service.ts     # Data access layer (CRUD)
-│       ├── song.stats.ts       # MongoDB aggregation pipelines
-│       ├── song.types.ts       # TypeScript interfaces & DTOs
-│       └── song.validation.ts  # Joi validation schemas
+│   ├── songs/
+│   │   ├── song.controller.ts  # Route handlers
+│   │   ├── song.model.ts       # Mongoose schema & indexes
+│   │   ├── song.routes.ts      # Express router
+│   │   ├── song.service.ts     # Business logic & Cloudinary ops
+│   │   ├── song.types.ts       # TypeScript interfaces
+│   │   └── song.validation.ts  # Joi schemas
+│   └── auth/              # Authentication module (placeholder)
 ├── middlewares/
-│   ├── error.middleware.ts   # Global error handler
-│   └── validate.ts           # Request body validation middleware
+│   ├── error.middleware.ts     # Global error handler
+│   ├── logger.middleware.ts    # Request logger
+│   └── validate.middleware.ts  # Joi validation middleware
+├── scripts/
+│   └── seed.ts            # Database seeder with Cloudinary uploads
 ├── utils/
-│   └── apiResponse.ts        # Unified API response builder
-├── index.routes.ts           # Root route aggregator
-├── app.ts                    # Express app setup & middleware
-└── server.ts                 # HTTP server bootstrap & graceful shutdown
+│   └── apiResponse.ts     # Standardized API response helper
+├── index.routes.ts        # Route index (mounts feature routers)
+├── app.ts                 # Express app setup (middleware stack)
+└── server.ts              # HTTP server entry point
 ```
 
 ---
@@ -79,16 +67,18 @@ src/
 
 ### Prerequisites
 
-- **Node.js** ≥ 20
-- **npm** ≥ 9
-- **MongoDB** (local instance or Atlas connection string)
-- **Docker** (optional, for containerized deployment)
+- **Node.js** ≥ 18
+- **MongoDB** (local or Atlas)
+- **Cloudinary** account (for media uploads)
 
 ### Installation
 
 ```bash
-git clone https://github.com/<your-username>/addis-song-backend.git
+# Clone
+git clone https://github.com/amdebirhan-asmamaw/addis-song-backend.git
 cd addis-song-backend
+
+# Install dependencies
 npm install
 ```
 
@@ -97,18 +87,26 @@ npm install
 Create a `.env` file in the project root:
 
 ```env
+NODE_ENV=development
 PORT=5000
 MONGO_URI=mongodb://localhost:27017/addis-songs
-CORS_ORIGIN=http://localhost:3000
-NODE_ENV=development
+CORS_ORIGINS=http://localhost:5173
+
+# Cloudinary
+CLOUDINARY_CLOUD_NAME=your_cloud_name
+CLOUDINARY_API_KEY=your_api_key
+CLOUDINARY_API_SECRET=your_api_secret
 ```
 
-| Variable      | Description                              | Default                |
-| ------------- | ---------------------------------------- | ---------------------- |
-| `PORT`        | Server port                              | `5000`                 |
-| `MONGO_URI`   | MongoDB connection string                | —                      |
-| `CORS_ORIGIN` | Comma-separated allowed origins          | `*` (if not set)       |
-| `NODE_ENV`    | `development` or `production`            | `development`          |
+| Variable                 | Required | Description                     | Default       |
+| ------------------------ | -------- | ------------------------------- | ------------- |
+| `NODE_ENV`               | No       | `development` / `production`    | `development` |
+| `PORT`                   | No       | Server port                     | `5000`        |
+| `MONGO_URI`              | Yes      | MongoDB connection string       | —             |
+| `CORS_ORIGINS`           | No       | Comma-separated allowed origins | —             |
+| `CLOUDINARY_CLOUD_NAME`  | Yes      | Cloudinary cloud name           | —             |
+| `CLOUDINARY_API_KEY`     | Yes      | Cloudinary API key              | —             |
+| `CLOUDINARY_API_SECRET`  | Yes      | Cloudinary API secret           | —             |
 
 ### Running Locally
 
@@ -125,24 +123,15 @@ The server starts at `http://localhost:5000`.
 
 ---
 
-## Docker
+## Scripts
 
-### Build
-
-```bash
-docker build -t addis-song-backend .
-```
-
-### Run
-
-```bash
-docker run -p 5000:5000 \
-  -e MONGO_URI=mongodb://host.docker.internal:27017/addis-songs \
-  -e CORS_ORIGIN=http://localhost:3000 \
-  addis-song-backend
-```
-
-The Dockerfile uses a **multi-stage build**: TypeScript is compiled in the builder stage, and only the compiled JavaScript and production dependencies are copied to the final image.
+| Script       | Command              | Description                                 |
+| ------------ | -------------------- | ------------------------------------------- |
+| `dev`        | `tsx watch src/server.ts` | Start dev server with hot-reload       |
+| `build`      | `tsc`                | Compile TypeScript to `dist/`               |
+| `start`      | `node dist/server.js`| Run compiled production build               |
+| `seed`       | `tsx src/scripts/seed.ts` | Seed database with sample songs        |
+| `seed:reset` | `tsx src/scripts/seed.ts -- --reset` | Clear & re-seed database    |
 
 ---
 
@@ -178,11 +167,9 @@ GET /api/v1/songs
 
 **Query Parameters:**
 
-| Param   | Type   | Required | Description              |
-| ------- | ------ | -------- | ------------------------ |
-| `genre` | string | No       | Filter songs by genre    |
-
-**Example:** `GET /api/v1/songs?genre=Rock`
+| Param   | Type   | Required | Description           |
+| ------- | ------ | -------- | --------------------- |
+| `genre` | string | No       | Filter songs by genre |
 
 **Response (200):**
 
@@ -192,11 +179,17 @@ GET /api/v1/songs
   "message": "Songs retrieved",
   "data": [
     {
-      "_id": "664...",
+      "id": "664...",
       "title": "Bohemian Rhapsody",
       "artist": "Queen",
       "album": "A Night at the Opera",
       "genre": "Rock",
+      "duration": "5:55",
+      "status": "LIVE",
+      "releaseYear": 1975,
+      "description": "...",
+      "image": { "url": "https://res.cloudinary.com/...", "id": "..." },
+      "audioUrl": { "url": "https://res.cloudinary.com/...", "id": "..." },
       "createdAt": "2026-05-16T00:00:00.000Z",
       "updatedAt": "2026-05-16T00:00:00.000Z"
     }
@@ -212,50 +205,27 @@ GET /api/v1/songs
 GET /api/v1/songs/:id
 ```
 
-**Response (200):**
-
-```json
-{
-  "success": true,
-  "message": "Song retrieved",
-  "data": { ... }
-}
-```
-
-**Response (404):**
-
-```json
-{
-  "success": false,
-  "message": "Song not found"
-}
-```
-
 ---
 
 #### Create Song
 
 ```
 POST /api/v1/songs
+Content-Type: multipart/form-data
 ```
 
-**Request Body:**
-
-```json
-{
-  "title": "Bohemian Rhapsody",
-  "artist": "Queen",
-  "album": "A Night at the Opera",
-  "genre": "Rock"
-}
-```
-
-| Field    | Type   | Required | Constraints      |
-| -------- | ------ | -------- | ---------------- |
-| `title`  | string | Yes      | 1–200 characters |
-| `artist` | string | Yes      | 1–200 characters |
-| `album`  | string | Yes      | 1–200 characters |
-| `genre`  | string | Yes      | 1–100 characters |
+| Field         | Type   | Required | Notes                          |
+| ------------- | ------ | -------- | ------------------------------ |
+| `title`       | string | Yes      | 1–200 characters               |
+| `artist`      | string | Yes      | 1–200 characters               |
+| `album`       | string | Yes      | 1–200 characters               |
+| `genre`       | string | Yes      | 1–100 characters               |
+| `duration`    | string | No       | e.g. `"3:45"`                  |
+| `status`      | string | No       | `LIVE`, `PROCESSING`, `DRAFT`  |
+| `releaseYear` | number | No       | 1900–2200                      |
+| `description` | string | No       | Free text                      |
+| `image`       | file   | No       | Image file (Cloudinary upload) |
+| `audio`       | file   | No       | Audio file (Cloudinary upload) |
 
 **Response (201):**
 
@@ -273,25 +243,10 @@ POST /api/v1/songs
 
 ```
 PUT /api/v1/songs/:id
+Content-Type: multipart/form-data
 ```
 
-**Request Body:** Partial — at least one field required.
-
-```json
-{
-  "genre": "Classic Rock"
-}
-```
-
-**Response (200):**
-
-```json
-{
-  "success": true,
-  "message": "Song updated",
-  "data": { ... }
-}
-```
+Partial update — at least one field required. Supports replacing image/audio files.
 
 ---
 
@@ -301,15 +256,7 @@ PUT /api/v1/songs/:id
 DELETE /api/v1/songs/:id
 ```
 
-**Response (200):**
-
-```json
-{
-  "success": true,
-  "message": "Song deleted",
-  "data": { ... }
-}
-```
+Deletes the song and its associated Cloudinary assets (image + audio).
 
 ---
 
@@ -331,16 +278,13 @@ GET /api/v1/songs/stats
     "totalAlbums": 18,
     "totalGenres": 6,
     "songsPerGenre": [
-      { "genre": "Rock", "count": 15 },
-      { "genre": "Pop", "count": 10 }
+      { "genre": "Rock", "count": 15 }
     ],
     "songsAndAlbumsPerArtist": [
-      { "artist": "Queen", "songCount": 8, "albumCount": 3 },
-      { "artist": "Adele", "songCount": 5, "albumCount": 2 }
+      { "artist": "Queen", "songCount": 8, "albumCount": 3 }
     ],
     "songsPerAlbum": [
-      { "album": "A Night at the Opera", "artist": "Queen", "songCount": 4 },
-      { "album": "25", "artist": "Adele", "songCount": 3 }
+      { "album": "A Night at the Opera", "artist": "Queen", "songCount": 4 }
     ]
   }
 }
@@ -348,16 +292,42 @@ GET /api/v1/songs/stats
 
 ---
 
+## Data Model
+
+### Song
+
+| Field         | Type             | Required | Notes                                |
+| ------------- | ---------------- | -------- | ------------------------------------ |
+| `title`       | String           | Yes      | Trimmed                              |
+| `artist`      | String           | Yes      | Trimmed                              |
+| `album`       | String           | Yes      | Trimmed                              |
+| `genre`       | String           | Yes      | Trimmed                              |
+| `duration`    | String           | No       | e.g. `"3:45"`                        |
+| `status`      | String (enum)    | No       | `LIVE` / `PROCESSING` / `DRAFT`      |
+| `releaseYear` | Number           | No       | Defaults to current year             |
+| `description` | String           | No       | Free text                            |
+| `image`       | `{ url, id }`    | No       | Cloudinary asset (cover art)         |
+| `audioUrl`    | `{ url, id }`    | No       | Cloudinary asset (audio file)        |
+| `createdAt`   | Date             | Auto     | Managed by Mongoose                  |
+| `updatedAt`   | Date             | Auto     | Managed by Mongoose                  |
+
+**Indexes:**
+- `{ artist: 1, album: 1 }` — optimizes per-artist/album queries
+- `{ genre: 1 }` — optimizes genre filtering & stats
+- `{ status: 1 }` — optimizes status filtering
+
+---
+
 ## API Response Format
 
-Every endpoint returns a consistent JSON structure:
+Every endpoint returns a consistent JSON envelope:
 
 ```typescript
 {
-  success: boolean;     // true for 2xx, false for errors
-  message: string;      // Human-readable status message
-  data?: T;             // Payload (present on success)
-  error?: string | string[];  // Error details (present on failure)
+  success: boolean;
+  message: string;
+  data?: T;
+  error?: string | string[];
 }
 ```
 
@@ -374,51 +344,6 @@ Every endpoint returns a consistent JSON structure:
 
 ---
 
-## Data Model
-
-### Song
-
-| Field       | Type     | Required | Notes                      |
-| ----------- | -------- | -------- | -------------------------- |
-| `title`     | String   | Yes      | Trimmed                    |
-| `artist`    | String   | Yes      | Trimmed                    |
-| `album`     | String   | Yes      | Trimmed                    |
-| `genre`     | String   | Yes      | Trimmed                    |
-| `createdAt` | Date     | Auto     | Managed by Mongoose        |
-| `updatedAt` | Date     | Auto     | Managed by Mongoose        |
-
-**Indexes:**
-- Compound: `{ artist: 1, album: 1 }` — optimizes per-artist/album queries
-- Single: `{ genre: 1 }` — optimizes genre filtering & stats
-
-### User
-
-| Field       | Type     | Required | Notes                        |
-| ----------- | -------- | -------- | ---------------------------- |
-| `email`     | String   | Yes      | Unique, lowercase, trimmed   |
-| `username`  | String   | Yes      | Unique, trimmed              |
-| `password`  | String   | Yes      | Excluded from queries by default (`select: false`) |
-| `createdAt` | Date     | Auto     | Managed by Mongoose          |
-| `updatedAt` | Date     | Auto     | Managed by Mongoose          |
-
----
-
-## Statistics Breakdown
-
-All stats are computed server-side using MongoDB aggregation pipelines, executed in parallel via `Promise.all`:
-
-| Stat                       | Description                                        |
-| -------------------------- | -------------------------------------------------- |
-| `totalSongs`               | Total number of songs in the database              |
-| `totalArtists`             | Count of distinct artists                          |
-| `totalAlbums`              | Count of distinct albums                           |
-| `totalGenres`              | Count of distinct genres                           |
-| `songsPerGenre`            | Number of songs in each genre                      |
-| `songsAndAlbumsPerArtist`  | Song count and album count for each artist         |
-| `songsPerAlbum`            | Number of songs in each album (grouped by artist)  |
-
----
-
 ## Error Handling
 
 Errors are handled at three levels:
@@ -432,13 +357,20 @@ Errors are handled at three levels:
 
 ---
 
-## Scripts
+## Deployment (Render)
 
-| Script        | Command           | Description                       |
-| ------------- | ----------------- | --------------------------------- |
-| `dev`         | `npm run dev`     | Start dev server with hot-reload  |
-| `build`       | `npm run build`   | Compile TypeScript to `dist/`     |
-| `start`       | `npm start`       | Run compiled production build     |
+| Setting           | Value                        |
+| ----------------- | ---------------------------- |
+| **Build Command** | `npm install && npm run build` |
+| **Start Command** | `node dist/server.js`        |
+
+Ensure all required environment variables are configured in the Render dashboard.
+
+---
+
+## Frontend
+
+This backend serves the [Addis Song Frontend](https://github.com/amdebirhan-asmamaw/addis-music-frontend) — a React/Redux/Emotion SPA deployed on Vercel.
 
 ---
 
