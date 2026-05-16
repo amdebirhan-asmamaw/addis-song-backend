@@ -45,12 +45,7 @@ router.get("/:id", songController.getOne);
  * @file    {File}        [audio]      - Audio track, uploaded to Cloudinary
  * @access  Public
  */
-router.post(
-  "/",
-  songUpload,
-  validate(createSongSchema),
-  songController.create,
-);
+router.post("/", songUpload, validate(createSongSchema), songController.create);
 
 /**
  * @route   PUT /api/v1/songs/:id

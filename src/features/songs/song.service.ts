@@ -16,8 +16,12 @@ async function uploadIncomingFiles(files: SongFiles): Promise<{
   audioUrl?: CloudinaryAsset;
 }> {
   const [image, audioUrl] = await Promise.all([
-    files.image ? uploadBuffer(files.image.buffer, "image") : Promise.resolve(undefined),
-    files.audio ? uploadBuffer(files.audio.buffer, "audio") : Promise.resolve(undefined),
+    files.image
+      ? uploadBuffer(files.image.buffer, "image")
+      : Promise.resolve(undefined),
+    files.audio
+      ? uploadBuffer(files.audio.buffer, "audio")
+      : Promise.resolve(undefined),
   ]);
   return { image, audioUrl };
 }
